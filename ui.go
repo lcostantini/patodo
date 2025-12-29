@@ -46,6 +46,7 @@ type model struct {
 	quitting       bool
 	activeInput    int    // 0 for description, 1 for category
 	editingTaskID  string // ID of task being edited
+	viewAsTable    bool   // true for table view, false for list view
 }
 
 // initialModel creates the initial model
@@ -69,6 +70,7 @@ func initialModel(store *TaskStore) model {
 		textInput:     ti,
 		categoryInput: ci,
 		activeInput:   0,
+		viewAsTable:   true,
 	}
 }
 
@@ -132,6 +134,15 @@ func (m model) updateListMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "f":
 		m.viewMode = ModeFilter
 		m.message = "Filter: (a)ll, (p)ending, (i)n-progress, (d)one, (c)ategory, ESC to cancel"
+		return m, nil
+
+	case "v":
+		m.viewAsTable = !m.viewAsTable
+		if m.viewAsTable {
+			m.message = "Switched to table view"
+		} else {
+			m.message = "Switched to list view"
+		}
 		return m, nil
 
 	case "up", "k":
@@ -463,65 +474,97 @@ func (m model) View() string {
 			s.WriteString(emptyStyle.Render("No tasks yet. Press 'n' to create one!"))
 			s.WriteString("\n\n")
 		} else {
-			// Render table header
-			headerStyle := lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color(colorTitle)).
-				BorderStyle(lipgloss.NormalBorder()).
-				BorderBottom(true).
-				BorderForeground(lipgloss.Color(colorHelp))
+			if m.viewAsTable {
+				// Table view
+				headerStyle := lipgloss.NewStyle().
+					Bold(true).
+					Foreground(lipgloss.Color(colorTitle)).
+					BorderStyle(lipgloss.NormalBorder()).
+					BorderBottom(true).
+					BorderForeground(lipgloss.Color(colorHelp))
 
-			s.WriteString(headerStyle.Render(fmt.Sprintf("%-3s %-3s %-50s %-20s", " ", "Status", "Description", "Category")))
-			s.WriteString("\n")
-
-			// Render tasks as table rows
-			for i, task := range m.tasks {
-				cursor := " "
-				if i == m.cursor {
-					cursor = ">"
-				}
-
-				statusIcon := m.getStatusIcon(task.Status)
-				statusColor := m.getStatusColor(task.Status)
-
-				// Truncate description if too long
-				description := task.Description
-				if len(description) > 48 {
-					description = description[:45] + "..."
-				}
-
-				// Format category
-				category := string(task.Category)
-				if len(category) > 18 {
-					category = category[:15] + "..."
-				}
-
-				categoryStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(colorCategory)).Italic(true)
-				categoryText := ""
-				if category != "" {
-					categoryText = categoryStyle.Render(category)
-				}
-
-				// Build row
-				row := fmt.Sprintf("%-3s ", cursor)
-				statusStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(statusColor))
-				row += statusStyle.Render(fmt.Sprintf("%-3s", statusIcon))
-				row += " "
-
-				if i == m.cursor {
-					descStyle := lipgloss.NewStyle().
-						Bold(true).
-						Foreground(lipgloss.Color(colorTitle))
-					row += descStyle.Render(fmt.Sprintf("%-50s", description))
-				} else {
-					taskStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(statusColor))
-					row += taskStyle.Render(fmt.Sprintf("%-50s", description))
-				}
-
-				row += " " + fmt.Sprintf("%-20s", categoryText)
-
-				s.WriteString(row)
+				s.WriteString(headerStyle.Render(fmt.Sprintf("%-3s %-50s %-20s", "Status", "Description", "Category")))
 				s.WriteString("\n")
+
+				// Render tasks as table rows
+				for i, task := range m.tasks {
+					cursor := " "
+					if i == m.cursor {
+						cursor = ">"
+					}
+
+					statusIcon := m.getStatusIcon(task.Status)
+					statusColor := m.getStatusColor(task.Status)
+
+					// Truncate description if too long
+					description := task.Description
+					if len(description) > 48 {
+						description = description[:45] + "..."
+					}
+
+					// Format category
+					category := string(task.Category)
+					if len(category) > 18 {
+						category = category[:15] + "..."
+					}
+
+					categoryStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(colorCategory)).Italic(true)
+					categoryText := ""
+					if category != "" {
+						categoryText = categoryStyle.Render(category)
+					}
+
+					// Build row
+					row := fmt.Sprintf("%-3s ", cursor)
+					statusStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(statusColor))
+					row += statusStyle.Render(fmt.Sprintf("%-3s", statusIcon))
+					row += " "
+
+					if i == m.cursor {
+						descStyle := lipgloss.NewStyle().
+							Bold(true).
+							Foreground(lipgloss.Color(colorTitle))
+						row += descStyle.Render(fmt.Sprintf("%-50s", description))
+					} else {
+						taskStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(statusColor))
+						row += taskStyle.Render(fmt.Sprintf("%-50s", description))
+					}
+
+					row += " " + fmt.Sprintf("%-20s", categoryText)
+
+					s.WriteString(row)
+					s.WriteString("\n")
+				}
+			} else {
+				// List view
+				for i, task := range m.tasks {
+					cursor := " "
+					if i == m.cursor {
+						cursor = ">"
+					}
+
+					statusIcon := m.getStatusIcon(task.Status)
+					statusColor := m.getStatusColor(task.Status)
+
+					taskStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(statusColor))
+
+					line := fmt.Sprintf("%s %s %s", cursor, statusIcon, task.Description)
+					if task.Category != "" {
+						categoryStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(colorCategory)).Italic(true)
+						line += " " + categoryStyle.Render(fmt.Sprintf("[%s]", string(task.Category)))
+					}
+
+					if i == m.cursor {
+						line = lipgloss.NewStyle().
+							Bold(true).
+							Foreground(lipgloss.Color(colorTitle)).
+							Render(line)
+					} else {
+						line = taskStyle.Render(line)
+					}
+					s.WriteString(line)
+					s.WriteString("\n")
+				}
 			}
 			s.WriteString("\n")
 		}
@@ -541,7 +584,11 @@ func (m model) View() string {
 		} else if m.filterCategory != nil {
 			filterInfo = string(*m.filterCategory)
 		}
-		help := fmt.Sprintf("[n] new task\n[e] edit task\n[d] done/undone\n[i] in-progress\n[p] pending\n[x] delete\n[f] filter (%s)\n[q] quit", filterInfo)
+		viewStyle := "table"
+		if !m.viewAsTable {
+			viewStyle = "list"
+		}
+		help := fmt.Sprintf("[n] new task\n[e] edit task\n[v] toggle view (%s)\n[d] done/undone\n[i] in-progress\n[p] pending\n[x] delete\n[f] filter (%s)\n[q] quit", viewStyle, filterInfo)
 		s.WriteString(helpStyle.Render(help))
 	}
 

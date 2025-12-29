@@ -65,6 +65,10 @@ func TestInitialModel(t *testing.T) {
 	if m.activeInput != 0 {
 		t.Errorf("activeInput should start at 0, got %d", m.activeInput)
 	}
+
+	if !m.viewAsTable {
+		t.Error("viewAsTable should start as true (table view)")
+	}
 }
 
 func TestModel_Init(t *testing.T) {
@@ -1196,5 +1200,126 @@ func TestModel_UpdateEditMode_TextInput(t *testing.T) {
 	// Should still be in edit mode
 	if m.viewMode != ModeEdit {
 		t.Error("Should remain in edit mode while typing")
+	}
+}
+
+func TestModel_ToggleView(t *testing.T) {
+	m, tmpDir := createTestModel(t)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	// Initial state should be table view
+	if !m.viewAsTable {
+		t.Error("Should start with table view")
+	}
+
+	// Press 'v' to toggle to list view
+	updatedModel, _ := m.updateListMode(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'v'}})
+	m = updatedModel.(model)
+
+	if m.viewAsTable {
+		t.Error("Should switch to list view after first toggle")
+	}
+
+	if !contains(m.message, "list view") {
+		t.Error("Message should indicate list view")
+	}
+
+	// Press 'v' again to toggle back to table view
+	updatedModel, _ = m.updateListMode(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'v'}})
+	m = updatedModel.(model)
+
+	if !m.viewAsTable {
+		t.Error("Should switch back to table view after second toggle")
+	}
+
+	if !contains(m.message, "table view") {
+		t.Error("Message should indicate table view")
+	}
+}
+
+func TestModel_View_TableView(t *testing.T) {
+	m, tmpDir := createTestModel(t)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	// Add some tasks
+	if err := m.store.Add("Task 1", TaskCategory("work")); err != nil {
+		t.Fatalf("Failed to add task: %v", err)
+	}
+	if err := m.store.Add("Task 2", TaskCategory("personal")); err != nil {
+		t.Fatalf("Failed to add task: %v", err)
+	}
+	m.refreshTasks()
+	m.viewAsTable = true
+
+	view := m.View()
+
+	if !contains(view, "Status") {
+		t.Error("Table view should contain Status header")
+	}
+
+	if !contains(view, "Description") {
+		t.Error("Table view should contain Description header")
+	}
+
+	if !contains(view, "Category") {
+		t.Error("Table view should contain Category header")
+	}
+
+	if !contains(view, "Task 1") {
+		t.Error("Table view should contain task descriptions")
+	}
+}
+
+func TestModel_View_ListView(t *testing.T) {
+	m, tmpDir := createTestModel(t)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	// Add some tasks
+	if err := m.store.Add("Task 1", TaskCategory("work")); err != nil {
+		t.Fatalf("Failed to add task: %v", err)
+	}
+	if err := m.store.Add("Task 2", TaskCategory("personal")); err != nil {
+		t.Fatalf("Failed to add task: %v", err)
+	}
+	m.refreshTasks()
+	m.viewAsTable = false
+
+	view := m.View()
+
+	if contains(view, "DESCRIPTION") {
+		t.Error("List view should not contain table headers")
+	}
+
+	if !contains(view, "Task 1") {
+		t.Error("List view should contain task descriptions")
+	}
+
+	if !contains(view, "[work]") {
+		t.Error("List view should show categories in brackets")
+	}
+}
+
+func TestModel_View_HelpTextWithViewToggle(t *testing.T) {
+	m, tmpDir := createTestModel(t)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	m.viewMode = ModeList
+	m.viewAsTable = true
+	view := m.View()
+
+	if !contains(view, "toggle view") {
+		t.Error("Help text should mention view toggle")
+	}
+
+	if !contains(view, "table") {
+		t.Error("Help text should show current view style (table)")
+	}
+
+	// Switch to list view
+	m.viewAsTable = false
+	view = m.View()
+
+	if !contains(view, "list") {
+		t.Error("Help text should show current view style (list)")
 	}
 }
