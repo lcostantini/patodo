@@ -4,11 +4,12 @@ A simple and elegant terminal user interface for managing TODO tasks.
 
 ## Features
 
-- ✅ Create tasks with descriptions and categories
+- ✅ Create and edit tasks with descriptions and categories
 - 📋 List all tasks with filtering
 - 🔄 Change task states (pending, in-progress, done)
 - 🔍 Filter tasks by status or category
 - 🏷️  Organize tasks with custom categories
+- 👁️  Toggle between table and list view modes
 - 💾 Persistent storage in `~/.config/patodo/tasks.json`
 - ⌨️  Keyboard-driven interface
 
@@ -38,7 +39,9 @@ patodo
 ## Keyboard Shortcuts
 
 ### Main View
-- `n` - Create new task (prompts for description, then category)
+- `n` - Create new task
+- `e` - Edit selected task
+- `v` - Toggle between table and list view
 - `d` - Toggle task done/pending
 - `i` - Mark task as in-progress
 - `p` - Mark task as pending
@@ -60,6 +63,19 @@ patodo
 - `a` - Show all categories
 - `ESC` - Cancel
 
+### Create/Edit Mode
+- `Tab` - Switch between description and category fields
+- `Enter` - Save task
+- `ESC` - Cancel
+
 ## Task Categories
 
-When creating a task, you can optionally assign it a category (e.g., "work", "personal"). Categories help organize tasks and can be used for filtering. Leave blank to create a task without a category.
+When creating or editing a task, you must assign it a category (e.g., "work", "personal", "shopping"). Categories help organize tasks and can be used for filtering.
+
+## Views
+
+patodo supports two view modes:
+- **Table view** (default) - Displays tasks in a structured table format with columns for status, description, and category
+- **List view** - Shows tasks in a compact list format
+
+Press `v` to toggle between views.
