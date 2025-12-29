@@ -1,0 +1,6 @@
+patodo
+*.swp
+*.swo
+*~
+.DS_Store
+coverage.*
